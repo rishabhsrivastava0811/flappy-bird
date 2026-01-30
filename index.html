@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Flappy Bird</title>
+
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#70c5ce">
+
+    <!-- iOS PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Flappy Bird">
+    <link rel="apple-touch-icon" href="icons/icon-180.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
+
+    <!-- Prevent phone number detection -->
+    <meta name="format-detection" content="telephone=no">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            background: linear-gradient(to bottom, #1a1a2e, #16213e);
+            font-family: 'Arial', sans-serif;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        .game-container {
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .score-display {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .message h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .message p {
+            font-size: 18px;
+            opacity: 0.8;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .share-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            pointer-events: auto;
+        }
+
+        .share-btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .share-btn:hover {
+            transform: scale(1.05);
+            opacity: 0.9;
+        }
+
+        .share-btn:active {
+            transform: scale(0.95);
+        }
+
+        .share-btn.instagram {
+            background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+            color: white;
+        }
+
+        .share-btn.whatsapp {
+            background: #25d366;
+            color: white;
+        }
+
+        .share-btn.share {
+            background: #6c5ce7;
+            color: white;
+        }
+
+        .share-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .new-best {
+            color: #f1c40f;
+            font-size: 22px;
+            margin-top: 10px;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        <div class="score-display" id="scoreDisplay">0</div>
+        <div class="message" id="startMessage">
+            <h1>Flappy Bird</h1>
+            <p>Click or press Space to start</p>
+        </div>
+        <div class="message hidden" id="gameOverMessage">
+            <h1>Game Over</h1>
+            <p>Level: <span id="finalLevel">1</span> | Score: <span id="finalScore">0</span></p>
+            <p>Best: <span id="bestScore">0</span></p>
+            <p class="new-best hidden" id="newBestLabel">New High Score!</p>
+            <div class="share-buttons">
+                <button class="share-btn instagram" onclick="shareToInstagram()">
+                    <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                    Instagram
+                </button>
+                <button class="share-btn whatsapp" onclick="shareToWhatsApp()">
+                    <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    WhatsApp
+                </button>
+                <button class="share-btn share" onclick="shareNative()">
+                    <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
+                    Share
+                </button>
+            </div>
+            <p style="margin-top: 15px; font-size: 14px;">Click or press Space to restart</p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const startMessage = document.getElementById('startMessage');
+        const gameOverMessage = document.getElementById('gameOverMessage');
+        const finalScoreSpan = document.getElementById('finalScore');
+        const finalLevelSpan = document.getElementById('finalLevel');
+        const bestScoreSpan = document.getElementById('bestScore');
+        const newBestLabel = document.getElementById('newBestLabel');
+
+        // ============ 8-BIT SOUND SYSTEM ============
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+        let bgMusicOsc = null;
+        let bgMusicGain = null;
+        let isMusicPlaying = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+        }
+
+        // Play 8-bit sound effect
+        function playSound(type) {
+            if (!audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.type = 'square'; // 8-bit square wave
+
+            switch (type) {
+                case 'flap':
+                    // Quick upward chirp
+                    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.1);
+                    break;
+
+                case 'score':
+                    // Happy ding
+                    osc.frequency.setValueAtTime(523, audioCtx.currentTime); // C5
+                    osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.1); // E5
+                    osc.frequency.setValueAtTime(784, audioCtx.currentTime + 0.15); // G5
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.25);
+                    break;
+
+                case 'levelUp':
+                    // Triumphant fanfare
+                    const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
+                    notes.forEach((freq, i) => {
+                        const o = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        o.connect(g);
+                        g.connect(audioCtx.destination);
+                        o.type = 'square';
+                        o.frequency.value = freq;
+                        g.gain.setValueAtTime(0.12, audioCtx.currentTime + i * 0.1);
+                        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.1 + 0.15);
+                        o.start(audioCtx.currentTime + i * 0.1);
+                        o.stop(audioCtx.currentTime + i * 0.1 + 0.15);
+                    });
+                    break;
+
+                case 'hit':
+                    // Crash/death sound
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.3);
+                    break;
+
+                case 'newBest':
+                    // Victory jingle
+                    const victoryNotes = [523, 659, 784, 659, 784, 1047];
+                    victoryNotes.forEach((freq, i) => {
+                        const o = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        o.connect(g);
+                        g.connect(audioCtx.destination);
+                        o.type = 'square';
+                        o.frequency.value = freq;
+                        g.gain.setValueAtTime(0.12, audioCtx.currentTime + i * 0.12);
+                        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.12 + 0.15);
+                        o.start(audioCtx.currentTime + i * 0.12);
+                        o.stop(audioCtx.currentTime + i * 0.12 + 0.15);
+                    });
+                    break;
+            }
+        }
+
+        // Background music - addictive chiptune loop
+        function startBackgroundMusic() {
+            if (!audioCtx || isMusicPlaying) return;
+
+            isMusicPlaying = true;
+
+            // Simple bass line pattern (in semitones from A2 = 110Hz)
+            const bassPattern = [0, 0, 7, 7, 5, 5, 3, 3]; // A, A, E, E, D, D, C, C
+            const melodyPattern = [12, 15, 19, 15, 12, 15, 19, 24]; // Octave up arpeggios
+
+            let bassIndex = 0;
+            let melodyIndex = 0;
+            const baseFreq = 110; // A2
+
+            function playBassNote() {
+                if (!isMusicPlaying || !audioCtx) return;
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.type = 'square';
+                const semitone = bassPattern[bassIndex % bassPattern.length];
+                osc.frequency.value = baseFreq * Math.pow(2, semitone / 12);
+
+                gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.2);
+
+                bassIndex++;
+                setTimeout(playBassNote, 250);
+            }
+
+            function playMelodyNote() {
+                if (!isMusicPlaying || !audioCtx) return;
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.type = 'square';
+                const semitone = melodyPattern[melodyIndex % melodyPattern.length];
+                osc.frequency.value = baseFreq * Math.pow(2, semitone / 12);
+
+                gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.15);
+
+                melodyIndex++;
+                setTimeout(playMelodyNote, 125);
+            }
+
+            playBassNote();
+            setTimeout(playMelodyNote, 62);
+        }
+
+        function stopBackgroundMusic() {
+            isMusicPlaying = false;
+        }
+        // ============ END SOUND SYSTEM ============
+
+        // Game constants
+        const GRAVITY = 0.5;
+        const FLAP_STRENGTH = -9;
+        const BASE_PIPE_SPEED = 3;
+        const PIPE_WIDTH = 70;
+        const PIPE_GAP = 160;
+        const BASE_PIPE_SPAWN_INTERVAL = 1800;
+        const SPEED_INCREASE_PER_LEVEL = 0.05; // 5% increase per level
+
+        // Game state
+        let gameState = 'waiting'; // 'waiting', 'playing', 'gameOver'
+        let score = 0;
+        let level = 1;
+        let bestScore = localStorage.getItem('flappyBestScore') || 0;
+        let lastPipeSpawn = 0;
+
+        // Get current speed multiplier based on level (starts at 75% base speed)
+        function getSpeedMultiplier() {
+            return 0.75 + (level - 1) * SPEED_INCREASE_PER_LEVEL;
+        }
+
+        // Calculate level from score
+        function calculateLevel() {
+            return Math.floor(score / 10) + 1;
+        }
+
+        // Get current pipe speed
+        function getCurrentPipeSpeed() {
+            return BASE_PIPE_SPEED * getSpeedMultiplier();
+        }
+
+        // Get current spawn interval (faster spawning at higher levels)
+        function getCurrentSpawnInterval() {
+            return BASE_PIPE_SPAWN_INTERVAL / getSpeedMultiplier();
+        }
+
+        // Bird
+        const bird = {
+            x: 80,
+            y: canvas.height / 2,
+            width: 40,
+            height: 30,
+            velocity: 0,
+            rotation: 0
+        };
+
+        // Pipes array
+        let pipes = [];
+
+        // Colors
+        const colors = {
+            sky: '#70c5ce',
+            skyGradient: '#4ec0ca',
+            ground: '#ded895',
+            groundDark: '#d4c575',
+            pipe: '#73bf2e',
+            pipeDark: '#558b20',
+            pipeHighlight: '#8ed43a',
+            bird: '#f7dc6f',
+            birdDark: '#f39c12',
+            birdWing: '#e74c3c'
+        };
+
+        function drawBackground() {
+            // Sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, colors.sky);
+            gradient.addColorStop(1, colors.skyGradient);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Clouds
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            drawCloud(50, 80, 60);
+            drawCloud(200, 120, 45);
+            drawCloud(320, 60, 50);
+            drawCloud(150, 200, 40);
+        }
+
+        function drawCloud(x, y, size) {
+            ctx.beginPath();
+            ctx.arc(x, y, size * 0.5, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.4, y - size * 0.1, size * 0.4, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.8, y, size * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawGround() {
+            const groundHeight = 80;
+            const groundY = canvas.height - groundHeight;
+
+            // Ground
+            ctx.fillStyle = colors.ground;
+            ctx.fillRect(0, groundY, canvas.width, groundHeight);
+
+            // Ground top line
+            ctx.fillStyle = colors.groundDark;
+            ctx.fillRect(0, groundY, canvas.width, 4);
+
+            // Ground pattern
+            ctx.fillStyle = colors.groundDark;
+            for (let i = 0; i < canvas.width; i += 30) {
+                ctx.fillRect(i, groundY + 15, 20, 3);
+                ctx.fillRect(i + 10, groundY + 35, 20, 3);
+                ctx.fillRect(i, groundY + 55, 20, 3);
+            }
+        }
+
+        function drawBird() {
+            ctx.save();
+            ctx.translate(bird.x + bird.width / 2, bird.y + bird.height / 2);
+
+            // Rotate based on velocity
+            bird.rotation = Math.min(Math.max(bird.velocity * 3, -30), 90);
+            ctx.rotate(bird.rotation * Math.PI / 180);
+
+            // Body
+            ctx.fillStyle = colors.bird;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, bird.width / 2, bird.height / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Body shadow
+            ctx.fillStyle = colors.birdDark;
+            ctx.beginPath();
+            ctx.ellipse(2, 4, bird.width / 2 - 4, bird.height / 2 - 4, 0, 0.3, Math.PI);
+            ctx.fill();
+
+            // Wing
+            ctx.fillStyle = colors.birdWing;
+            ctx.beginPath();
+            const wingFlap = Math.sin(Date.now() / 50) * 5;
+            ctx.ellipse(-5, wingFlap, 12, 8, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye white
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(10, -5, 10, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye pupil
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(13, -5, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye highlight
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(14, -7, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Beak
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.moveTo(15, 2);
+            ctx.lineTo(28, 5);
+            ctx.lineTo(15, 10);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawPipe(pipe) {
+            const topPipeHeight = pipe.y;
+            const bottomPipeY = pipe.y + PIPE_GAP;
+            const bottomPipeHeight = canvas.height - 80 - bottomPipeY;
+
+            // Top pipe
+            drawPipeSection(pipe.x, 0, PIPE_WIDTH, topPipeHeight, true);
+
+            // Bottom pipe
+            drawPipeSection(pipe.x, bottomPipeY, PIPE_WIDTH, bottomPipeHeight, false);
+        }
+
+        function drawPipeSection(x, y, width, height, isTop) {
+            if (height <= 0) return;
+
+            // Main pipe body
+            ctx.fillStyle = colors.pipe;
+            ctx.fillRect(x, y, width, height);
+
+            // Pipe highlight
+            ctx.fillStyle = colors.pipeHighlight;
+            ctx.fillRect(x + 5, y, 10, height);
+
+            // Pipe shadow
+            ctx.fillStyle = colors.pipeDark;
+            ctx.fillRect(x + width - 15, y, 15, height);
+
+            // Pipe cap
+            const capHeight = 30;
+            const capWidth = width + 10;
+            const capX = x - 5;
+            const capY = isTop ? y + height - capHeight : y;
+
+            ctx.fillStyle = colors.pipe;
+            ctx.fillRect(capX, capY, capWidth, capHeight);
+
+            ctx.fillStyle = colors.pipeHighlight;
+            ctx.fillRect(capX + 5, capY, 12, capHeight);
+
+            ctx.fillStyle = colors.pipeDark;
+            ctx.fillRect(capX + capWidth - 15, capY, 15, capHeight);
+
+            // Cap border
+            ctx.strokeStyle = colors.pipeDark;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(capX, capY, capWidth, capHeight);
+        }
+
+        function spawnPipe() {
+            const minY = 80;
+            const maxY = canvas.height - 80 - PIPE_GAP - 80;
+            const pipeY = Math.random() * (maxY - minY) + minY;
+
+            pipes.push({
+                x: canvas.width,
+                y: pipeY,
+                scored: false
+            });
+        }
+
+        function updateBird() {
+            bird.velocity += GRAVITY;
+            bird.y += bird.velocity;
+
+            // Ground collision
+            const groundY = canvas.height - 80;
+            if (bird.y + bird.height / 2 > groundY) {
+                bird.y = groundY - bird.height / 2;
+                gameOver();
+            }
+
+            // Ceiling collision
+            if (bird.y - bird.height / 2 < 0) {
+                bird.y = bird.height / 2;
+                bird.velocity = 0;
+            }
+        }
+
+        function updatePipes() {
+            const currentSpeed = getCurrentPipeSpeed();
+
+            // Move pipes
+            pipes.forEach(pipe => {
+                pipe.x -= currentSpeed;
+
+                // Check scoring
+                if (!pipe.scored && pipe.x + PIPE_WIDTH < bird.x) {
+                    pipe.scored = true;
+                    score++;
+
+                    // Update level
+                    const newLevel = calculateLevel();
+                    if (newLevel > level) {
+                        level = newLevel;
+                        playSound('levelUp');
+                    } else {
+                        playSound('score');
+                    }
+
+                    // Update display
+                    scoreDisplay.innerHTML = `<div style="font-size: 24px; opacity: 0.8;">Level ${level}</div>${score}`;
+                }
+            });
+
+            // Remove off-screen pipes
+            pipes = pipes.filter(pipe => pipe.x + PIPE_WIDTH > 0);
+
+            // Spawn new pipes (faster at higher levels)
+            const now = Date.now();
+            if (now - lastPipeSpawn > getCurrentSpawnInterval()) {
+                spawnPipe();
+                lastPipeSpawn = now;
+            }
+        }
+
+        function checkCollision() {
+            const birdLeft = bird.x - bird.width / 2 + 5;
+            const birdRight = bird.x + bird.width / 2 - 5;
+            const birdTop = bird.y - bird.height / 2 + 5;
+            const birdBottom = bird.y + bird.height / 2 - 5;
+
+            for (const pipe of pipes) {
+                const pipeLeft = pipe.x;
+                const pipeRight = pipe.x + PIPE_WIDTH;
+                const gapTop = pipe.y;
+                const gapBottom = pipe.y + PIPE_GAP;
+
+                // Check if bird is within pipe x range
+                if (birdRight > pipeLeft && birdLeft < pipeRight) {
+                    // Check if bird is outside the gap
+                    if (birdTop < gapTop || birdBottom > gapBottom) {
+                        gameOver();
+                        return;
+                    }
+                }
+            }
+        }
+
+        function flap() {
+            if (gameState === 'waiting') {
+                startGame();
+            } else if (gameState === 'playing') {
+                bird.velocity = FLAP_STRENGTH;
+                playSound('flap');
+            } else if (gameState === 'gameOver') {
+                resetGame();
+            }
+        }
+
+        function startGame() {
+            gameState = 'playing';
+            startMessage.classList.add('hidden');
+            lastPipeSpawn = Date.now();
+            bird.velocity = FLAP_STRENGTH;
+            initAudio();
+            startBackgroundMusic();
+            playSound('flap');
+        }
+
+        function gameOver() {
+            gameState = 'gameOver';
+            stopBackgroundMusic();
+            playSound('hit');
+
+            const isNewBest = score > bestScore;
+            if (isNewBest) {
+                bestScore = score;
+                localStorage.setItem('flappyBestScore', bestScore);
+            }
+
+            finalScoreSpan.textContent = score;
+            finalLevelSpan.textContent = level;
+            bestScoreSpan.textContent = bestScore;
+
+            if (isNewBest && score > 0) {
+                newBestLabel.classList.remove('hidden');
+                setTimeout(() => playSound('newBest'), 400);
+            } else {
+                newBestLabel.classList.add('hidden');
+            }
+
+            gameOverMessage.classList.remove('hidden');
+        }
+
+        // Share functions
+        function getShareText() {
+            const isNewBest = score >= bestScore && score > 0;
+            if (isNewBest) {
+                return `I reached Level ${level} with a new high score of ${score} in Flappy Bird! Can you beat it?`;
+            }
+            return `I reached Level ${level} and scored ${score} in Flappy Bird! My best is ${bestScore}. Can you beat me?`;
+        }
+
+        function createShareImage() {
+            // Create a new canvas for the share image
+            const shareCanvas = document.createElement('canvas');
+            shareCanvas.width = 400;
+            shareCanvas.height = 600;
+            const shareCtx = shareCanvas.getContext('2d');
+
+            // Draw current game state (background, pipes, ground, bird)
+            // Sky gradient
+            const gradient = shareCtx.createLinearGradient(0, 0, 0, shareCanvas.height);
+            gradient.addColorStop(0, colors.sky);
+            gradient.addColorStop(1, colors.skyGradient);
+            shareCtx.fillStyle = gradient;
+            shareCtx.fillRect(0, 0, shareCanvas.width, shareCanvas.height);
+
+            // Clouds
+            shareCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            [{ x: 50, y: 80, s: 60 }, { x: 200, y: 120, s: 45 }, { x: 320, y: 60, s: 50 }, { x: 150, y: 200, s: 40 }].forEach(c => {
+                shareCtx.beginPath();
+                shareCtx.arc(c.x, c.y, c.s * 0.5, 0, Math.PI * 2);
+                shareCtx.arc(c.x + c.s * 0.4, c.y - c.s * 0.1, c.s * 0.4, 0, Math.PI * 2);
+                shareCtx.arc(c.x + c.s * 0.8, c.y, c.s * 0.35, 0, Math.PI * 2);
+                shareCtx.fill();
+            });
+
+            // Ground
+            const groundHeight = 80;
+            const groundY = shareCanvas.height - groundHeight;
+            shareCtx.fillStyle = colors.ground;
+            shareCtx.fillRect(0, groundY, shareCanvas.width, groundHeight);
+            shareCtx.fillStyle = colors.groundDark;
+            shareCtx.fillRect(0, groundY, shareCanvas.width, 4);
+
+            // Semi-transparent overlay
+            shareCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            shareCtx.fillRect(0, 0, shareCanvas.width, shareCanvas.height);
+
+            // Game Over text
+            shareCtx.fillStyle = 'white';
+            shareCtx.font = 'bold 48px Arial';
+            shareCtx.textAlign = 'center';
+            shareCtx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            shareCtx.shadowBlur = 4;
+            shareCtx.shadowOffsetX = 2;
+            shareCtx.shadowOffsetY = 2;
+            shareCtx.fillText('Flappy Bird', shareCanvas.width / 2, 150);
+
+            // Score box
+            shareCtx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            shareCtx.beginPath();
+            shareCtx.roundRect(50, 180, 300, 230, 20);
+            shareCtx.fill();
+
+            // Level
+            shareCtx.fillStyle = '#3498db';
+            shareCtx.font = 'bold 28px Arial';
+            shareCtx.fillText(`LEVEL ${level}`, shareCanvas.width / 2, 230);
+
+            // Score
+            shareCtx.fillStyle = 'white';
+            shareCtx.font = 'bold 32px Arial';
+            shareCtx.fillText('SCORE', shareCanvas.width / 2, 280);
+            shareCtx.font = 'bold 72px Arial';
+            shareCtx.fillStyle = '#f1c40f';
+            shareCtx.fillText(score.toString(), shareCanvas.width / 2, 360);
+
+            // Best score
+            shareCtx.fillStyle = 'white';
+            shareCtx.font = 'bold 24px Arial';
+            shareCtx.fillText(`Best: ${bestScore}`, shareCanvas.width / 2, 400);
+
+            // New high score badge
+            if (score >= bestScore && score > 0) {
+                shareCtx.fillStyle = '#e74c3c';
+                shareCtx.beginPath();
+                shareCtx.roundRect(100, 420, 200, 40, 20);
+                shareCtx.fill();
+                shareCtx.fillStyle = 'white';
+                shareCtx.font = 'bold 20px Arial';
+                shareCtx.fillText('NEW HIGH SCORE!', shareCanvas.width / 2, 447);
+            }
+
+            // Branding
+            shareCtx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            shareCtx.font = '16px Arial';
+            shareCtx.fillText('Can you beat my score?', shareCanvas.width / 2, 520);
+
+            return shareCanvas;
+        }
+
+        async function getShareImageBlob() {
+            const shareCanvas = createShareImage();
+            return new Promise((resolve) => {
+                shareCanvas.toBlob((blob) => {
+                    resolve(blob);
+                }, 'image/png');
+            });
+        }
+
+        async function shareToInstagram() {
+            // Instagram doesn't have a web share API, so we download the image
+            // User can then upload it to Instagram Stories or Feed
+            await downloadShareImage();
+            alert('Image downloaded! Open Instagram and share it to your Stories or Feed.');
+        }
+
+        async function shareToWhatsApp() {
+            // Try native share with image first (mobile)
+            if (navigator.share && navigator.canShare) {
+                try {
+                    const blob = await getShareImageBlob();
+                    const file = new File([blob], 'flappy-bird-score.png', { type: 'image/png' });
+                    const shareData = { files: [file], text: getShareText() };
+
+                    if (navigator.canShare(shareData)) {
+                        await navigator.share(shareData);
+                        return;
+                    }
+                } catch (err) {
+                    console.log('Native share failed, falling back');
+                }
+            }
+            // Fallback: download image and open WhatsApp
+            await downloadShareImage();
+            const text = encodeURIComponent(getShareText());
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        async function shareNative() {
+            try {
+                const blob = await getShareImageBlob();
+                const file = new File([blob], 'flappy-bird-score.png', { type: 'image/png' });
+                const shareData = {
+                    title: 'Flappy Bird Score',
+                    text: getShareText(),
+                    files: [file]
+                };
+
+                if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+                    await navigator.share(shareData);
+                } else if (navigator.share) {
+                    // Try without files
+                    await downloadShareImage();
+                    await navigator.share({ title: 'Flappy Bird Score', text: getShareText() });
+                } else {
+                    await downloadShareImage();
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    await downloadShareImage();
+                }
+            }
+        }
+
+        async function downloadShareImage() {
+            const shareCanvas = createShareImage();
+            const link = document.createElement('a');
+            link.download = `flappy-bird-score-${score}.png`;
+            link.href = shareCanvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function resetGame() {
+            gameState = 'waiting';
+            score = 0;
+            level = 1;
+            scoreDisplay.innerHTML = '0';
+            bird.y = canvas.height / 2;
+            bird.velocity = 0;
+            bird.rotation = 0;
+            pipes = [];
+            gameOverMessage.classList.add('hidden');
+            startMessage.classList.remove('hidden');
+        }
+
+        function gameLoop() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw background
+            drawBackground();
+
+            // Draw pipes
+            pipes.forEach(drawPipe);
+
+            // Draw ground (on top of pipes)
+            drawGround();
+
+            // Draw bird
+            drawBird();
+
+            // Update game state
+            if (gameState === 'playing') {
+                updateBird();
+                updatePipes();
+                checkCollision();
+            } else if (gameState === 'waiting') {
+                // Gentle floating animation
+                bird.y = canvas.height / 2 + Math.sin(Date.now() / 300) * 10;
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event listeners
+        canvas.addEventListener('click', flap);
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                flap();
+            }
+        });
+
+        // Initialize best score display
+        bestScoreSpan.textContent = bestScore;
+
+        // Start game loop
+        gameLoop();
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registered:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker registration failed:', error);
+                    });
+            });
+        }
+
+        // Handle iOS standalone mode
+        if (window.navigator.standalone === true) {
+            document.body.style.paddingTop = 'env(safe-area-inset-top)';
+        }
+    </script>
+</body>
+</html>
