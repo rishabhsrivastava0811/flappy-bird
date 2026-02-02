@@ -647,24 +647,24 @@
         }
 
         function checkCollision() {
-            // Use a much smaller circular hitbox centered on the bird's body
-            // Bird visual is 40x30 but we only check a small circle in the center
-            const hitboxRadius = 10; // Small circular hitbox
-
+            // Use a tiny hitbox - just a single point at bird's center
             const birdCenterX = bird.x;
             const birdCenterY = bird.y;
 
+            // Extra tolerance for the gap (makes it more forgiving)
+            const gapTolerance = 15;
+
             for (const pipe of pipes) {
-                // Only check collision with the main pipe body (not caps)
                 const pipeLeft = pipe.x;
                 const pipeRight = pipe.x + PIPE_WIDTH;
-                const gapTop = pipe.y;
-                const gapBottom = pipe.y + PIPE_GAP;
+                // Add tolerance to make gap bigger for collision purposes
+                const gapTop = pipe.y - gapTolerance;
+                const gapBottom = pipe.y + PIPE_GAP + gapTolerance;
 
-                // Check if bird center is within pipe x range (with radius buffer)
-                if (birdCenterX + hitboxRadius > pipeLeft && birdCenterX - hitboxRadius < pipeRight) {
-                    // Check if bird is outside the gap (with radius buffer)
-                    if (birdCenterY - hitboxRadius < gapTop || birdCenterY + hitboxRadius > gapBottom) {
+                // Check if bird center is within pipe x range
+                if (birdCenterX > pipeLeft && birdCenterX < pipeRight) {
+                    // Check if bird CENTER is outside the (expanded) gap
+                    if (birdCenterY < gapTop || birdCenterY > gapBottom) {
                         gameOver();
                         return;
                     }

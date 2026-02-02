@@ -1,4 +1,4 @@
-const CACHE_NAME = 'flappy-bird-v2';
+const CACHE_NAME = 'flappy-bird-v3';
 const urlsToCache = [
   './',
   './index.html',
