@@ -652,7 +652,7 @@
             const birdCenterY = bird.y;
 
             // Extra tolerance for the gap (makes it more forgiving)
-            const gapTolerance = 25;
+            const gapTolerance = 35;
 
             for (const pipe of pipes) {
                 const pipeLeft = pipe.x;
@@ -674,12 +674,16 @@
 
         // Debug: Draw collision zones
         function drawDebugZones() {
-            const gapTolerance = 25;
+            const gapTolerance = 35;
 
-            // Draw bird center point (red dot)
+            // Draw bird center point (big red dot with white outline)
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(bird.x, bird.y, 14, 0, Math.PI * 2);
+            ctx.fill();
             ctx.fillStyle = 'red';
             ctx.beginPath();
-            ctx.arc(bird.x, bird.y, 8, 0, Math.PI * 2);
+            ctx.arc(bird.x, bird.y, 10, 0, Math.PI * 2);
             ctx.fill();
 
             // Draw safe zone for each pipe (green outline)
