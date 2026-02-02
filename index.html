@@ -647,18 +647,24 @@
         }
 
         function checkCollision() {
-            const birdLeft = bird.x - bird.width / 2 + 5;
-            const birdRight = bird.x + bird.width / 2 - 5;
-            const birdTop = bird.y - bird.height / 2 + 5;
-            const birdBottom = bird.y + bird.height / 2 - 5;
+            // Use a smaller hitbox that matches the visual bird body better
+            // The bird is drawn as an ellipse, so we use a circular hitbox
+            const hitboxMarginX = 12; // Shrink from each side horizontally
+            const hitboxMarginY = 8;  // Shrink from top/bottom
+
+            const birdLeft = bird.x - bird.width / 2 + hitboxMarginX;
+            const birdRight = bird.x + bird.width / 2 - hitboxMarginX;
+            const birdTop = bird.y - bird.height / 2 + hitboxMarginY;
+            const birdBottom = bird.y + bird.height / 2 - hitboxMarginY;
 
             for (const pipe of pipes) {
-                const pipeLeft = pipe.x;
-                const pipeRight = pipe.x + PIPE_WIDTH;
+                // Account for pipe caps which extend 5px beyond pipe body
+                const pipeLeft = pipe.x - 5;
+                const pipeRight = pipe.x + PIPE_WIDTH + 5;
                 const gapTop = pipe.y;
                 const gapBottom = pipe.y + PIPE_GAP;
 
-                // Check if bird is within pipe x range
+                // Check if bird is within pipe x range (including caps)
                 if (birdRight > pipeLeft && birdLeft < pipeRight) {
                     // Check if bird is outside the gap
                     if (birdTop < gapTop || birdBottom > gapBottom) {
